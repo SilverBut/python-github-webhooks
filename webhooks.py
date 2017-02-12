@@ -17,7 +17,7 @@
 
 import logging
 from sys import stderr, hexversion
-logging.basicConfig(stream=stderr)
+logging.basicConfig(stream=stderr, format='[%(levelname)s][%(asctime)s][SYS] %(message)s')
 
 import hmac
 from hashlib import sha1
@@ -50,7 +50,8 @@ def hostname_hookprocer(hostname):
     """
 
     path = normpath(abspath(dirname(__file__)))
-    logging.basicConfig(format='[%(levelname)s][%(asctime)s][%s] %(message)s'%(hostname))
+    for item in logging.root.handlers:
+      item.setFormatter(logging.Formatter('[%(levelname)s][%(asctime)s]['+hostname+'] %(message)s'))
 
     # Only POST is implemented
     if request.method != 'POST':
@@ -211,4 +212,4 @@ def hostname_hookprocer(hostname):
 
 
 if __name__ == '__main__':
-    application.run(debug=True, host='127.0.0.1', port=8700)
+    application.run(host='127.0.0.1', port=8700)
