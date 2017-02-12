@@ -64,7 +64,7 @@ def hostname_hookprocer(hostname):
     default_config=config.get('default') 
     site_config=config.get(hostname, default_config)
     for item in default_config.keys():
-        if not site_config.get(item):
+        if site_config.get(item)==None:
             site_config[item]=default_config[item]
             logging.warning('Using default config of item %s'%(item))
     config=site_config
@@ -97,7 +97,7 @@ def hostname_hookprocer(hostname):
             abort(501)
 
         # HMAC requires the key to be bytes, but data is string
-        mac = hmac.new(str(secret), msg=request.data, digestmod=sha1)
+        mac = hmac.new(str(secret).encode(), msg=request.data, digestmod=sha1)
 
         # Python prior to 2.7.7 does not have hmac.compare_digest
         if hexversion >= 0x020707F0:
