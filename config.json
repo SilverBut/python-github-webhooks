@@ -1,7 +1,8 @@
 {
 	"default": {
-		"github_ips_only": true,
-    	"enforce_secret": "",
-    	"return_scripts_info": true
+		"github_ips_only": false,
+    	"enforce_secret": "NONEs3crETN0w",
+    	"return_scripts_info": false,
+		"hooks_path": "hooks"
 	}
 }

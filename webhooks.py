@@ -17,7 +17,7 @@
 
 import logging
 from sys import stderr, hexversion
-logging.basicConfig(stream=stderr, format='[%(levelname)s][%(asctime)s][SYS] %(message)s')
+logging.basicConfig(level=logging.DEBUG, stream=stderr, format='[%(levelname)s][%(asctime)s][SYS] %(message)s')
 
 import hmac
 from hashlib import sha1
@@ -82,6 +82,7 @@ def hostname_hookprocer(hostname):
             if src_ip in ip_network(valid_ip):
                 break
         else:
+            logging.error("github_ips_only is TRUE but source IP is wrong.")
             abort(403)
 
     # Enforce secret
@@ -117,8 +118,10 @@ def hostname_hookprocer(hostname):
 
     # Gather data
     try:
-        payload = loads(request.data)
-    except:
+        payload = loads(request.data.decode())
+    except Exception as e:
+        logging.debug("Got this from Github: %s"%(request.data))
+        logging.error("Failed to parse report from github: %s"%e)
         abort(400)
 
     # Determining the branch is tricky, as it only appears for certain event
@@ -154,7 +157,8 @@ def hostname_hookprocer(hostname):
     meta = {
         'name': name,
         'branch': branch,
-        'event': event
+        'event': event,
+        'folder': hooks
     }
     logging.info('Metadata:\n{}'.format(dumps(meta)))
 
