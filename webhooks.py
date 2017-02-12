@@ -17,7 +17,7 @@
 
 import logging
 from sys import stderr, hexversion
-logging.basicConfig(stream=stderr)
+logging.basicConfig(level=logging.DEBUG, stream=stderr, format='[%(levelname)s][%(asctime)s][SYS] %(message)s')
 
 import hmac
 from hashlib import sha1
@@ -36,12 +36,22 @@ application = Flask(__name__)
 
 
 @application.route('/', methods=['GET', 'POST'])
-def index():
+def site_index():
+    return 'Deployer is ALIVE!'
+
+@application.route('/<string:hostname>', methods=['GET'])
+def hostname_index(hostname):
+    return 'Site %s is ALIVE for deployer!'%(hostname)
+
+@application.route('/<string:hostname>', methods=['POST'])
+def hostname_hookprocer(hostname):
     """
     Main WSGI application entry.
     """
 
     path = normpath(abspath(dirname(__file__)))
+    for item in logging.root.handlers:
+      item.setFormatter(logging.Formatter('[%(levelname)s][%(asctime)s]['+hostname+'] %(message)s'))
 
     # Only POST is implemented
     if request.method != 'POST':
@@ -50,6 +60,14 @@ def index():
     # Load config
     with open(join(path, 'config.json'), 'r') as cfg:
         config = loads(cfg.read())
+
+    default_config=config.get('default') 
+    site_config=config.get(hostname, default_config)
+    for item in default_config.keys():
+        if site_config.get(item)==None:
+            site_config[item]=default_config[item]
+            logging.warning('Using default config of item %s'%(item))
+    config=site_config
 
     hooks = config.get('hooks_path', join(path, 'hooks'))
 
@@ -64,6 +82,7 @@ def index():
             if src_ip in ip_network(valid_ip):
                 break
         else:
+            logging.error("github_ips_only is TRUE but source IP is wrong.")
             abort(403)
 
     # Enforce secret
@@ -79,7 +98,7 @@ def index():
             abort(501)
 
         # HMAC requires the key to be bytes, but data is string
-        mac = hmac.new(str(secret), msg=request.data, digestmod=sha1)
+        mac = hmac.new(str(secret).encode(), msg=request.data, digestmod=sha1)
 
         # Python prior to 2.7.7 does not have hmac.compare_digest
         if hexversion >= 0x020707F0:
@@ -99,8 +118,10 @@ def index():
 
     # Gather data
     try:
-        payload = loads(request.data)
-    except:
+        payload = loads(request.data.decode())
+    except Exception as e:
+        logging.debug("Got this from Github: %s"%(request.data))
+        logging.error("Failed to parse report from github: %s"%e)
         abort(400)
 
     # Determining the branch is tricky, as it only appears for certain event
@@ -136,7 +157,8 @@ def index():
     meta = {
         'name': name,
         'branch': branch,
-        'event': event
+        'event': event,
+        'folder': hooks
     }
     logging.info('Metadata:\n{}'.format(dumps(meta)))
 
@@ -194,4 +216,4 @@ def index():
 
 
 if __name__ == '__main__':
-    application.run(debug=True, host='0.0.0.0')
+    application.run(host='127.0.0.1', port=8700)
