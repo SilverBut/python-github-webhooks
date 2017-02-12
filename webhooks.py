@@ -36,12 +36,21 @@ application = Flask(__name__)
 
 
 @application.route('/', methods=['GET', 'POST'])
-def index():
+def site_index():
+    return 'Deployer is ALIVE!'
+
+@application.route('/<string:hostname>', methods=['GET'])
+def hostname_index(hostname):
+    return 'Site %s is ALIVE for deployer!'%(hostname)
+
+@application.route('/<string:hostname>', methods=['POST'])
+def hostname_hookprocer(hostname):
     """
     Main WSGI application entry.
     """
 
     path = normpath(abspath(dirname(__file__)))
+    logging.basicConfig(format='[%(levelname)s][%(asctime)s][%s] %(message)s'%(hostname))
 
     # Only POST is implemented
     if request.method != 'POST':
@@ -50,6 +59,14 @@ def index():
     # Load config
     with open(join(path, 'config.json'), 'r') as cfg:
         config = loads(cfg.read())
+
+    default_config=config.get('default') 
+    site_config=config.get(hostname, default_config)
+    for item in default_config.keys():
+        if not site_config.get(item):
+            site_config[item]=default_config[item]
+            logging.warning('Using default config of item %s'%(item))
+    config=site_config
 
     hooks = config.get('hooks_path', join(path, 'hooks'))
 
@@ -194,4 +211,4 @@ def index():
 
 
 if __name__ == '__main__':
-    application.run(debug=True, host='0.0.0.0')
+    application.run(debug=True, host='127.0.0.1', port=8700)
